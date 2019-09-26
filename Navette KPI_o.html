@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Monthly Navette KPI</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="initial-scale=1.0">
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <script src="./js/papaparse.js"></script><!--papaParse api-->
+  <script src="./js/exceljs.js"></script><!--exceljs api-->
+  <script src="./js/FileSaver.min.js"></script><!--fileSaver api-->
+  <script src="./js/moment.js"></script><!--moment api-->
+</head> 
+
+<style>
+.switch {
+  position: relative;
+  display: inline-block;
+  width: calc(60px + 6 * ((100vw - 680px) / 680));
+  height: calc(34px + 6 * ((100vw - 680px) / 680));
+}
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  width: calc(26px + 6 * ((100vw - 680px) / 680));
+  height: calc(26px + 6 * ((100vw - 680px) / 680));
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+input:checked + .slider {
+  background-color: #2196F3;
+}
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+.slider.round:before {
+  border-radius: 50%;
+}
+#wrapper {
+  float: right;
+}
+#container {
+  position: absolute;
+  top: 60%;
+  transform: translateY(-60%);
+  margin-left: 8vw;
+}
+body{
+  background-color: #eaeaea;
+  height:100%;
+  margin:.5em;
+  font: 1vw "Segoe UI",Arial,Helvetica,sans-serif;
+}
+div{
+  align: center; 
+}
+p,h1,h2,h3,h4 {
+  color: black;      
+}
+.button {
+  cursor:pointer;
+  background-color: lightgray;
+  border-radius: 1vw;
+  margin: 1vw;
+  min-width: calc(18vw + 6 * ((100vw - 680px) / 680));
+  font-size: calc(2vw + 6 * ((100vw - 680px) / 680));
+  padding: 1.5vw;
+}
+.smbutton {
+  cursor:pointer;
+  background-color: yellow;
+  border-radius: 1vw;
+  margin: .5vw;
+  min-width: calc(6vw + 6 * ((100vw - 680px) / 680));
+  font-size: calc(.75vw + 6 * ((100vw - 680px) / 680));
+  padding: .5vw;
+}
+.file {
+  cursor:pointer;
+  background-color: lightgray;
+  border-radius: 1vw;
+  margin: 1vw;
+  font-size: calc(.5vw + 6 * ((100vw - 680px) / 680));
+  padding: .5vw;
+}
+.ssi-header-logo {
+    float: right;
+    height: 1.5vw;
+    margin: .5vw;
+    width: auto;
+}
+h1 {
+    text-align: left;
+    font-family: arial;
+    font-size: 2vw;
+    padding: .5vw;
+    margin-top: 0px;
+    margin-bottom: .15vw;
+    background-color: yellow;
+  }
+h2 {
+  font-family: arial;
+  font-size: calc(.8vw + 6 * ((100vw - 320px) / 680));
+  margin: 15px;
+  font-weight:normal
+}
+h3 {
+  text-align: left;
+  font-family: arial;
+  font-size: calc(.65vw + 6 * ((100vw - 320px) / 680));
+  padding: 12px;
+  margin-top: 0px;
+  margin-bottom: 5px;
+  background-color: yellow;
+}
+h4 {
+  font-family: arial;
+  font-size: calc(.5vw + 6 * ((100vw - 320px) / 680));
+  margin: 5px;
+  font-weight:normal
+}
+</style>
+
+<script>
+  //Set timeout so visu server doesn't reject everything. 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+  //create date object array. 
+function getDaysInMonth(_month, _year) {
+   let date = new Date(_year, _month, 1);
+   let days = [];
+
+  //this creates an array of date objects for all the days in a given month. 
+  while (date.getMonth() === _month) {
+        days.push(new Date(date));
+        date.setDate(date.getDate() + 1);
+     }
+   return days;
+}
+
+function getDays(_inputMon){
+  let URL = [];
+    //just assume we only care about this year.
+  let inputYear = new Date().getFullYear(); 
+    //urlDays is an array of Date objects
+  let urlDays = getDaysInMonth(_inputMon, inputYear);
+  
+    /*This iterates through each item in the array urlDays(an array of Date
+    objects), gets the integer
+    value for day of the week. (.getDay = 0-6), calls the function getURL with that value,
+    concatenates everything and then pushes the final URL into an array of urls
+    named "URL"*/
+  urlDays.forEach(item => URL.push(getURL(item.getDay(),item)));
+    //console.log(URL);
+  loopURLs(URL); //Send each download request to the server
+}
+
+function getURL(_dotw,_tdate){
+/*
+Reference URL that inlude safety and admittance
+http://10.136.17.191:8080/lighthouse-core/services/notification/export?condition=(($%3C%3Cdefinition.severity%3E%3E+%3D+%27ERROR%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+%27%25afety%25%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+%27%25dmittance%25%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+%27Check%25%27)+AND+($%3C%3CstartTime%3E%3E+%3E+$%3C%3Ctime:2019-08-01_23:27:10%3E%3E)+AND+($%3C%3CendTime%3E%3E+%3C+$%3C%3Ctime:2019-08-15_23:27:23%3E%3E)+AND+(($%3C%3CnodeId%3E%3E+IN+(%27NAVETTE-PHYSICAL%27,%27NavetteShuttleControllers-PHYSICAL%27,%27N1111-PHYSICAL%27,%27N1213-PHYSICAL%27,%27N5113-PHYSICAL%27,%27N3213-PHYSICAL%27,%27N2213-PHYSICAL%27,%27N4213-PHYSICAL%27,%27N6113-PHYSICAL%27,%27N6211-PHYSICAL%27,%27N2112-PHYSICAL%27,%27N1112-PHYSICAL%27,%27N2214-PHYSICAL%27,%27N2113-PHYSICAL%27,%27N2211-PHYSICAL%27,%27N3214-PHYSICAL%27,%27N1113-PHYSICAL%27,%27N1211-PHYSICAL%27,%27N5211-PHYSICAL%27,%27N6214-PHYSICAL%27,%27N6111-PHYSICAL%27,%27N4113-PHYSICAL%27,%27N4211-PHYSICAL%27,%27N4214-PHYSICAL%27,%27N5214-PHYSICAL%27,%27N3113-PHYSICAL%27,%27N3211-PHYSICAL%27,%27N3114-PHYSICAL%27,%27N3111-PHYSICAL%27,%27N2114-PHYSICAL%27,%27N4114-PHYSICAL%27,%27N2111-PHYSICAL%27,%27N4111-PHYSICAL%27,%27N4212-PHYSICAL%27,%27N5111-PHYSICAL%27,%27N6212-PHYSICAL%27,%27N3212-PHYSICAL%27,%27N6114-PHYSICAL%27,%27N5114-PHYSICAL%27,%27N1214-PHYSICAL%27,%27N5212-PHYSICAL%27,%27N6213-PHYSICAL%27,%27N4112-PHYSICAL%27,%27N6112-PHYSICAL%27,%27N5213-PHYSICAL%27,%27N3112-PHYSICAL%27,%27N2212-PHYSICAL%27,%27N1104-PHYSICAL%27,%27N1212-PHYSICAL%27,%27N5112-PHYSICAL%27,%27NavetteLiftControllers-PHYSICAL%27,%27NL1085-PHYSICAL%27,%27NL6084-PHYSICAL%27,%27NL5084-PHYSICAL%27,%27NL1082-PHYSICAL%27,%27NL2085-PHYSICAL%27,%27NL4084-PHYSICAL%27,%27NL4082-PHYSICAL%27,%27NL3084-PHYSICAL%27,%27NL1084-PHYSICAL%27,%27NL5082-PHYSICAL%27,%27NL2084-PHYSICAL%27,%27NL6082-PHYSICAL%27,%27NL4083-PHYSICAL%27,%27NL3083-PHYSICAL%27,%27NL5083-PHYSICAL%27,%27NL6085-PHYSICAL%27,%27NL2083-PHYSICAL%27,%27NL6083-PHYSICAL%27,%27NL5085-PHYSICAL%27,%27NL1083-PHYSICAL%27,%27NL3082-PHYSICAL%27,%27NL3085-PHYSICAL%27,%27NL4085-PHYSICAL%27,%27NL2082-PHYSICAL%27))))&firstResult=0&maxResults=10000&orderBy=$%3C%3CstartTime%3E%3E+DESC
+*/
+
+/*
+Reference URL that does not inlude safety and admittance
+http://10.136.17.191:8080/lighthouse-core/services/notification/export?condition=(($%3C%3Cdefinition.severity%3E%3E+%3D+%27ERROR%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+%27afety%25%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+Check%25%27)+AND+($%3C%3Ctext%3E%3E+NOT+LIKE+%27dmittance%25%27)+AND+($%3C%3CstartTime%3E%3E+%3E+$%3C%3Ctime:2019-07-01_16:53:39%3E%3E)+AND+($%3C%3CendTime%3E%3E+%3C+$%3C%3Ctime:2019-07-07_16:53:51%3E%3E)+AND+(($%3C%3CnodeId%3E%3E+IN+(%27NAVETTE-PHYSICAL%27,%27NavetteShuttleControllers-PHYSICAL%27,%27N1111-PHYSICAL%27,%27N1213-PHYSICAL%27,%27N5113-PHYSICAL%27,%27N3213-PHYSICAL%27,%27N2213-PHYSICAL%27,%27N4213-PHYSICAL%27,%27N6113-PHYSICAL%27,%27N6211-PHYSICAL%27,%27N2112-PHYSICAL%27,%27N1112-PHYSICAL%27,%27N2214-PHYSICAL%27,%27N2113-PHYSICAL%27,%27N2211-PHYSICAL%27,%27N3214-PHYSICAL%27,%27N1113-PHYSICAL%27,%27N1211-PHYSICAL%27,%27N5211-PHYSICAL%27,%27N6214-PHYSICAL%27,%27N6111-PHYSICAL%27,%27N4113-PHYSICAL%27,%27N4211-PHYSICAL%27,%27N4214-PHYSICAL%27,%27N5214-PHYSICAL%27,%27N3113-PHYSICAL%27,%27N3211-PHYSICAL%27,%27N3114-PHYSICAL%27,%27N3111-PHYSICAL%27,%27N2114-PHYSICAL%27,%27N4114-PHYSICAL%27,%27N2111-PHYSICAL%27,%27N4111-PHYSICAL%27,%27N4212-PHYSICAL%27,%27N5111-PHYSICAL%27,%27N6212-PHYSICAL%27,%27N3212-PHYSICAL%27,%27N6114-PHYSICAL%27,%27N5114-PHYSICAL%27,%27N1214-PHYSICAL%27,%27N5212-PHYSICAL%27,%27N6213-PHYSICAL%27,%27N4112-PHYSICAL%27,%27N6112-PHYSICAL%27,%27N5213-PHYSICAL%27,%27N3112-PHYSICAL%27,%27N2212-PHYSICAL%27,%27N1104-PHYSICAL%27,%27N1212-PHYSICAL%27,%27N5112-PHYSICAL%27,%27NavetteLiftControllers-PHYSICAL%27,%27NL1085-PHYSICAL%27,%27NL6084-PHYSICAL%27,%27NL5084-PHYSICAL%27,%27NL1082-PHYSICAL%27,%27NL2085-PHYSICAL%27,%27NL4084-PHYSICAL%27,%27NL4082-PHYSICAL%27,%27NL3084-PHYSICAL%27,%27NL1084-PHYSICAL%27,%27NL5082-PHYSICAL%27,%27NL2084-PHYSICAL%27,%27NL6082-PHYSICAL%27,%27NL4083-PHYSICAL%27,%27NL3083-PHYSICAL%27,%27NL5083-PHYSICAL%27,%27NL6085-PHYSICAL%27,%27NL2083-PHYSICAL%27,%27NL6083-PHYSICAL%27,%27NL5085-PHYSICAL%27,%27NL1083-PHYSICAL%27,%27NL3082-PHYSICAL%27,%27NL3085-PHYSICAL%27,%27NL4085-PHYSICAL%27,%27NL2082-PHYSICAL%27))))&firstResult=0&maxResults=10000&orderBy=$%3C%3CstartTime%3E%3E+DESC
+*/
+/* All Navettes No filters
+http://10.136.17.191:8080/lighthouse-core/services/notification/export?condition=(($%3C%3Cdefinition.severity%3E%3E+%3D+%27ERROR%27)+AND+(($%3C%3CnodeId%3E%3E+IN+(%27NAVETTE-PHYSICAL%27,%27NavetteShuttleControllers-PHYSICAL%27,%27N1111-PHYSICAL%27,%27N1213-PHYSICAL%27,%27N5113-PHYSICAL%27,%27N3213-PHYSICAL%27,%27N2213-PHYSICAL%27,%27N4213-PHYSICAL%27,%27N6113-PHYSICAL%27,%27N6211-PHYSICAL%27,%27N2112-PHYSICAL%27,%27N1112-PHYSICAL%27,%27N2214-PHYSICAL%27,%27N2113-PHYSICAL%27,%27N2211-PHYSICAL%27,%27N3214-PHYSICAL%27,%27N1113-PHYSICAL%27,%27N1211-PHYSICAL%27,%27N5211-PHYSICAL%27,%27N6214-PHYSICAL%27,%27N6111-PHYSICAL%27,%27N4113-PHYSICAL%27,%27N4211-PHYSICAL%27,%27N4214-PHYSICAL%27,%27N5214-PHYSICAL%27,%27N3113-PHYSICAL%27,%27N3211-PHYSICAL%27,%27N3114-PHYSICAL%27,%27N3111-PHYSICAL%27,%27N2114-PHYSICAL%27,%27N4114-PHYSICAL%27,%27N2111-PHYSICAL%27,%27N4111-PHYSICAL%27,%27N4212-PHYSICAL%27,%27N5111-PHYSICAL%27,%27N6212-PHYSICAL%27,%27N3212-PHYSICAL%27,%27N6114-PHYSICAL%27,%27N5114-PHYSICAL%27,%27N1214-PHYSICAL%27,%27N5212-PHYSICAL%27,%27N6213-PHYSICAL%27,%27N4112-PHYSICAL%27,%27N6112-PHYSICAL%27,%27N5213-PHYSICAL%27,%27N3112-PHYSICAL%27,%27N2212-PHYSICAL%27,%27N1104-PHYSICAL%27,%27N1212-PHYSICAL%27,%27N5112-PHYSICAL%27,%27NavetteLiftControllers-PHYSICAL%27,%27NL1085-PHYSICAL%27,%27NL6084-PHYSICAL%27,%27NL5084-PHYSICAL%27,%27NL1082-PHYSICAL%27,%27NL2085-PHYSICAL%27,%27NL4084-PHYSICAL%27,%27NL4082-PHYSICAL%27,%27NL3084-PHYSICAL%27,%27NL1084-PHYSICAL%27,%27NL5082-PHYSICAL%27,%27NL2084-PHYSICAL%27,%27NL6082-PHYSICAL%27,%27NL4083-PHYSICAL%27,%27NL3083-PHYSICAL%27,%27NL5083-PHYSICAL%27,%27NL6085-PHYSICAL%27,%27NL2083-PHYSICAL%27,%27NL6083-PHYSICAL%27,%27NL5085-PHYSICAL%27,%27NL1083-PHYSICAL%27,%27NL3082-PHYSICAL%27,%27NL3085-PHYSICAL%27,%27NL4085-PHYSICAL%27,%27NL2082-PHYSICAL%27)))+AND+($%3C%3CstartTime%3E%3E+%3E+$%3C%3Ctime:2019-08-01_23:45:36%3E%3E)+AND+($%3C%3CendTime%3E%3E+%3C+$%3C%3Ctime:2019-08-08_23:45:49%3E%3E))&firstResult=0&maxResults=10000&orderBy=$%3C%3CstartTime%3E%3E+DESC
+*/
+  const url1 =
+  "http://10.136.17.191:8080/lighthouse-core/services/notification/export?condition=(($%3C%3Cdefinition.severity%3E%3E+%3D+%27ERROR%27)+AND+(($%3C%3CnodeId%3E%3E+IN+(%27NAVETTE-PHYSICAL%27,%27NavetteShuttleControllers-PHYSICAL%27,%27N1111-PHYSICAL%27,%27N1213-PHYSICAL%27,%27N5113-PHYSICAL%27,%27N3213-PHYSICAL%27,%27N2213-PHYSICAL%27,%27N4213-PHYSICAL%27,%27N6113-PHYSICAL%27,%27N6211-PHYSICAL%27,%27N2112-PHYSICAL%27,%27N1112-PHYSICAL%27,%27N2214-PHYSICAL%27,%27N2113-PHYSICAL%27,%27N2211-PHYSICAL%27,%27N3214-PHYSICAL%27,%27N1113-PHYSICAL%27,%27N1211-PHYSICAL%27,%27N5211-PHYSICAL%27,%27N6214-PHYSICAL%27,%27N6111-PHYSICAL%27,%27N4113-PHYSICAL%27,%27N4211-PHYSICAL%27,%27N4214-PHYSICAL%27,%27N5214-PHYSICAL%27,%27N3113-PHYSICAL%27,%27N3211-PHYSICAL%27,%27N3114-PHYSICAL%27,%27N3111-PHYSICAL%27,%27N2114-PHYSICAL%27,%27N4114-PHYSICAL%27,%27N2111-PHYSICAL%27,%27N4111-PHYSICAL%27,%27N4212-PHYSICAL%27,%27N5111-PHYSICAL%27,%27N6212-PHYSICAL%27,%27N3212-PHYSICAL%27,%27N6114-PHYSICAL%27,%27N5114-PHYSICAL%27,%27N1214-PHYSICAL%27,%27N5212-PHYSICAL%27,%27N6213-PHYSICAL%27,%27N4112-PHYSICAL%27,%27N6112-PHYSICAL%27,%27N5213-PHYSICAL%27,%27N3112-PHYSICAL%27,%27N2212-PHYSICAL%27,%27N1104-PHYSICAL%27,%27N1212-PHYSICAL%27,%27N5112-PHYSICAL%27,%27NavetteLiftControllers-PHYSICAL%27,%27NL1085-PHYSICAL%27,%27NL6084-PHYSICAL%27,%27NL5084-PHYSICAL%27,%27NL1082-PHYSICAL%27,%27NL2085-PHYSICAL%27,%27NL4084-PHYSICAL%27,%27NL4082-PHYSICAL%27,%27NL3084-PHYSICAL%27,%27NL1084-PHYSICAL%27,%27NL5082-PHYSICAL%27,%27NL2084-PHYSICAL%27,%27NL6082-PHYSICAL%27,%27NL4083-PHYSICAL%27,%27NL3083-PHYSICAL%27,%27NL5083-PHYSICAL%27,%27NL6085-PHYSICAL%27,%27NL2083-PHYSICAL%27,%27NL6083-PHYSICAL%27,%27NL5085-PHYSICAL%27,%27NL1083-PHYSICAL%27,%27NL3082-PHYSICAL%27,%27NL3085-PHYSICAL%27,%27NL4085-PHYSICAL%27,%27NL2082-PHYSICAL%27)))+AND+($%3C%3CstartTime%3E%3E+%3E+$%3C%3Ctime:"
+
+  const url2 = "%3E%3E)+AND+($%3C%3CendTime%3E%3E+%3C+$%3C%3Ctime:"
+
+  const url3 =
+  "%3E%3E))&firstResult=0&maxResults=10000&orderBy=$%3C%3CstartTime%3E%3E+ASC"
+
+  switch (_dotw) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+          var startday = _tdate.toISOString().split("T",1);
+          var endday = new Date(_tdate);
+              endday.setDate(_tdate.getDate() + 1);
+              endday = endday.toISOString().split("T",1);
+          var starttime = "_06:00:00"
+          var endtime = "_03:00:00"
+          var url = (url1 + startday + starttime + url2 + endday + endtime
+          +url3);
+          return url;
+          break;
+        // If weekend night shift is enabled change end time to 06:00:00 the next day
+        case 4:
+        case 5:
+        case 6:
+        if(document.getElementById("nightshift").checked == true){
+              var startday = _tdate.toISOString().split("T",1);
+              var endday = new Date(_tdate);
+                  endday.setDate(_tdate.getDate() + 1);
+                  endday = endday.toISOString().split("T",1);
+              var starttime = "_06:00:00"
+              var endtime = "_06:00:00"
+          } else {
+              var startday = _tdate.toISOString().split("T",1);
+              var endday = startday;
+              var starttime = "_06:00:00"
+              var endtime = "_18:00:00"
+          }
+          var url = (url1 + startday + starttime + url2 + endday + endtime
+          +url3);
+          return url;
+          break;
+        default:
+          var startday = ""
+          var endday = ""
+          var starttime = ""
+          var endtime = ""
+          var url = ("example.com" + startday + starttime  + endday + endtime);
+          return url;
+          break;
+  }
+}
+
+async function loopURLs(_download) {
+    for (let index = 0; index < _download.length; index++) {
+      const url = _download[index]
+        //open hidden iframe to get the file from the server.
+      const hidden = await document.createElement("iframe");
+              hidden.setAttribute("src", url);
+              hidden.style.display = "none";
+              document.body.appendChild(hidden);
+        //update export progress at the bottom of the page.
+      document.getElementById("downloads").innerHTML = "Downloading page " +
+      (index + 1).toString() + " of " + _download.length.toString();
+        //sleep for one second before "sending" next request. 
+      await sleep(1000);
+    }
+    document.getElementById("downloads").innerHTML = "Downloaded " + _download.length.toString() + " files to your browsers default Downloads directory!"
+}
+
+async function parsefiles(){
+    //get filelist of files selected to parse from the html input.
+  const rawFiles = document.getElementById("file").files;
+    // create the book. 
+  const book = new ExcelJS.Workbook();
+    //for loop the iteration protocol way, loop through all the files in the file list. 
+  for (const item of rawFiles){
+      await Papa.parse(item, {
+                complete: async function(results) {
+                        data = results.data;
+                          //slice the array to cut off the first and last elements, we don't need them.
+                        data = data.slice(2, data.length - 1);
+                        const ws = book.addWorksheet()
+                          ws.views = [
+                            {state: 'frozen', ySplit: 1, activeCell: 'A1'}
+                          ];
+                          ws.getRow(1).font = {bold: true};
+                          ws.columns = [
+                                      { header: 'MechanicalName', key: '_mechanicalName', width: 20},
+                                      { header: 'StartTime', key: '_startTime', width: 20},
+                                      { header: 'EndTime', key: '_endTime', width: 20},
+                                      { header: 'Text', key: '_text', width: 60},
+                                      { header: 'Duration', key: '_duration', width: 12}
+                                      ];
+                          //Initialize new array that will be used to remove duplicate time stamps and concat fault strings. 
+                          //for loop ES6 way. 
+                          var day = [];
+                          data.forEach((fault, index) => {
+                              day = isDuplicate(day, fault)
+                          })
+
+                          day.forEach((fault, index) => {
+                                  //enable multiline text in cells used for faults.
+                                if(index === day.length -1){
+                                    //last line hack to get textwrap to work correctly.
+                                  ws.getCell('D'+ (index + 1).toString()).alignment = { wrapText: true };
+                                  ws.addRow({_mechanicalName: fault[6], _startTime: fault[2], _endTime: fault[3], _text: fault[7], _duration: fault[4]})
+                                  ws.getCell('D'+ (index + 2).toString()).alignment = { wrapText: true };
+                                  ws.addRow({_mechanicalName: "", _startTime: "", _endTime: "", _text: "", _duration: ""})
+                                }else{
+                                  ws.getCell('D'+ (index + 1 ).toString()).alignment = { wrapText: true };
+                                  ws.addRow({_mechanicalName: fault[6], _startTime: fault[2], _endTime: fault[3], _text: fault[7], _duration: fault[4]})
+                                }
+                          })
+
+                            // We're gonna give the sheets meaningful names. 
+                          for (let i = 0; i < book.worksheets.length; ++i) {
+                            for(let i = 0; i < book.worksheets.length; ++i){
+                                if (book.worksheets[i].getCell('B2').value != null){
+                                    var d = new Date(book.worksheets[i].getCell('B2').value);
+                                    break;
+                                }
+                            }
+                              
+                                // Months don't start at zero.
+                              d.setDate(i + 1);
+                              let day = d.toLocaleString('default', { weekday: 'short'});
+                                // 08-01 instead of 2019-08-01 
+                              d = d.toJSON().slice(5,10);
+
+                                // Mo instead of Mon to make the name fit in the tabs.
+                              day = day.slice(0,2);
+
+                                // Mo 08-01, Tu 08-02, etc....
+                              book.worksheets[i].name = day + " " + d;
+                          }
+
+                      }})
+  }
+  console.log(book);
+    //Is it really a hack if it works? 
+  await sleep(1000);
+    //Write buffer and use the filesaver API to create a xlsx file. 
+  writeBook(book);
+}
+
+async function writeBook(book){
+  // use fileSaver API to save file since excelJS doesn't support in browser saving.
+    for(let i = 0; i < book.worksheets.length; ++i){
+        if (book.worksheets[i].getCell('B2').value != null){
+            var d = new Date(book.worksheets[i].getCell('B2').value);
+            break;
+        }
+    }
+  /*
+  let d = new Date();
+    // Take care of December
+  if ((d.getMonth() - 1) < 0){
+    d.setMonth(11);
+  }else{
+    d.setMonth(d.getMonth() - 1);
+  }
+  */
+
+  let m = d.toLocaleString('default', { month: 'long'});
+  d = d.toJSON().slice(0,5);
+
+    book.xlsx.writeBuffer()
+        .then(function(buffer){
+            var blob = new Blob ([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
+            saveAs(blob, d + m + ' Navette KPI.xlsx');
+        });
+}
+
+function isDuplicate(day, fault) {
+  var found = false;
+
+  if (day.length === 0){
+    day.push(fault);
+  }
+
+  if (day.length > 0){
+
+    for(let i = 0; i < day.length; i++){
+
+        if (day[i][6] === fault[6]
+            && (day[i][2] <= fault[2] && (day[i][3] >= fault[2])) 
+            ) {
+
+                // Found it
+              if ((day[i][2] === fault[2] && day[i][3] <= fault[3])
+                  || (day[i][2] <= fault[2] && day[i][3] > fault[2]) && (day[i][3] <= fault[3])
+                ){
+                      /*If start time of new fault starts while another fault is present and ends
+                        after the present fault time, add the fault to the group and replace the end time.*/ 
+                    day[i][3] = fault[3];
+                      //adjust the duration of the fault, use momentjs api to make things easier.
+                    var d1 = new Date(day[i][2]);
+                    var d2 = new Date(fault[3]);
+                    /*
+                    console.log('old duration: ')
+                    console.log(day[i][4])
+                    console.log('start time: ')
+                    console.log(day[i][2])
+                    console.log('end time: ')
+                    console.log(fault[3])
+                    */
+                    var ms = moment(d2,"DD/MM/YYYY HH:mm:ss").diff(moment(d1,"DD/MM/YYYY HH:mm:ss"));
+                    var d = moment.duration(ms);
+                    var s = Math.floor(d.asHours()) + moment.utc(ms).format(":mm:ss");
+                    day [i][4] = s;
+                    /*
+                    console.log('new duration: ')
+                    console.log(day[i][4])
+                    console.log('start time: ')
+                    console.log(day[i][2])
+                    console.log('end time: ')
+                    console.log(day[i][3])
+                    */
+                    //check for the string to exist in the existing fault text, only add if unique.
+                  if (day[i][7].indexOf(fault[7]) === -1){
+                    day[i][7] = day[i][7].concat(',\r\n' + fault[7]);
+                  };
+            }else if(day[i][2] <= fault[2] && (day[i][3] >= (fault[3] || fault[2]))){
+                  //check for the string to exist in the existing fault text, only add if unique.
+                if (day[i][7].indexOf(fault[7]) === -1){
+                  day[i][7] = day[i][7].concat(',\r\n' + fault[7]);
+                };
+            }else if(found === false && day[i][3] < fault[2] && day[i][3] < fault[3]){
+                  //push the new fault entry reset i and start over to verify.
+                day.push(fault);
+                i = 0; 
+                found = true;
+            }else{
+                //nothing to do here.
+            }
+          found = true;
+        }
+        //First fault add row. ,check the indexes in day for existing timestamps,then push new fault if unique 
+      if(found === false && i === day.length -1){
+        day.push(fault);
+      } 
+    }
+  }
+     return day; 
+}
+     
+</script>
+
+<body>
+<h1>Export Monthly Faults<img src=" data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAApUAAAA7CAYAAAAq2HEQAAAACXBIWXMAAC4jAAAuIwF4pT92AAABK2lDQ1BQaG90b3Nob3AgSUNDIHByb2ZpbGUAAHjaY2BgMnB0cXJlEmBgyM0rKQpyd1KIiIxSYD/PwMbAzAAGicnFBY4BAT4gdl5+XioDBvh2jYERRF/WBZnFQBrgSi4oKgHSf4DYKCW1OJmBgdEAyM4uLykAijPOAbJFkrLB7A0gdlFIkDOQfQTI5kuHsK+A2EkQ9hMQuwjoCSD7C0h9OpjNxAE2B8KWAbFLUitA9jI45xdUFmWmZ5QoGFpaWio4puQnpSoEVxaXpOYWK3jmJecXFeQXJZakpgDVQtwHBoIQhaAQ0wBqtNBkoDIAxQOE9TkQHL6MYmcQYgiQXFpUBmUyMhkT5iPMmCPBwOC/lIGB5Q9CzKSXgWGBDgMD/1SEmJohA4OAPgPDvjkAwMZP/RIdqAQAAAAEZ0FNQQAAsZ5hTEH3AAAAIGNIUk0AAHolAACAgwAA+f8AAIDoAABSCAABFVgAADqXAAAXb9daH5AAABLeSURBVHjaYmQYBaNgFJANFBVVHYCUABAbQIXskaQVoJgQOIDE/gDEF6HsC1D+g/v3bz8Y4uEECwtQeMkjhYsDiUZ9QAoXUDg9gIbPgdHUOApGwSgYBQMLAAKIcTQIRsEoILphBGo4BgCxPrQRqUBnJxyANqIeQtkXgI2pD4M4rBygjWxYw5se4QNqcB4EsakZNkD/IHccqAZo2RiGxgG1wx3ewaEwTLB2lJA6H/QCtHAHPF/SKA4GC/gA9OcFpM71SAPUyguD2m+kAoAAYqGFa44wcM4HUgnDMBE12jB8b0Dy534G0kdahgs4AAwLR6Sw+E8jexyB9hwYKE8CCwtQI9If2pgc6MoBOa3VQ913ANqI2gAr4Ae4IRkPDSuFAQofEC6AumcDkNoIDRtKG5ggv+0fYh37fhqUT41A3ECFMEE2B93NAXRMM6A0EohFPAGWx8gpsxgQsw+0iINBUwdA/cpAo7wx6NsDVMoLg3UQBdxxgMYzrI4h2NAECCAmGjQoC4Zpg3IUjBAA6nUCcQEQ3wdy10PT82AdbXCAVn7nge4F4YQBCK8EaFidhzboFAZJ2IAaJ6AO7n2g++ZDG72jYPDmOwU6NyjBaQRq7ygYBaMAEwhA82Q/tBxdT6gcBQggqjYqgQ1KA6jlo2AUDNWKLQDaOOofRI0jYgEo/4EaT/vpMR2F1JicP8jDSgDaMTgPDZvRxuXgBAkjzN5RMAqGGgiAlqP90Cl/DAAQQFRrVAIblCAL9o+G+SgYoo1J0OgkaFRy/RBsTKIDUINyP76MT2FYOQyRxiSusDlPq7AZBRSB+BFm7ygYBUMVFEDrGIzyHyCAqDlSuZ5h+C5IHgXDvEEJ7RAFjJSMT0HDux8aVgrDIGzOj45aDpo8GDCAaUoBav8oGAWjgHhggK0MBQggqjQqjzBwDufFyKNgZDQoDUZSxicjnBSg4VQwjMJGARo2CaM5YcBB/Ai3fxSMgqEIQPXnfORZH4AAorhRCWxQBgyzimYUjCywfhg3KJEzPtlrCaH6zg/jcJo/2rAc0I4dqHE/0COFoxt2RsEoIA+A1/LDOAABRFGjEroxZ/5omI6CIVqZgRoSDiOoR7me1HWE0Ablfobhv7Rl/gg9a28wgIRRd4yCUTCkQQCs/AQIILIbldCNOfMZRtdRjoKh2aAEpduRdlKBAil+RloaMFLy+PrRNZYDAuJH3TEKRsGQB+BzXQECiJKRSlCDcrQAHgVDtmc1QjtECSSMyO0fYWEE6yiPAvp17gZygw5Gp2t0w84oGAVkA9CpIAYAAUTWjTrQA85HM98oGMognw52gG64ecCAuMsbBvQZEPeFCwyQ3w8QqOwbRmin0QDk9/v3bzeMZhGCAJS2G8nUC0t/g210EOSeDYTyBxHhMgpGwUgE8QABRHKjEtigdGAYPeB8FAyDxgMNzQZVtAuIudJqgK42BG9KwOU+6IaFfDrGBewqsIvQCvkBUqNbHkrTs4GbDwyDCYP1XvXBAqDph+zG9yDZoIMrbxygsGE5CkbBiKxXAQKIpEYldB3l+tFwGwVDGdB4Q0YisEJaQELFDBrNvAB0UyO0s5ZAr8oTiCfgkKtnoM8IKqjSnggMgw045Ddgaegm0MFtsPW2iaO5haYgYRC7q2E0ekbBKCC9UQkQQKSuqRxpa6xGwfAECrQymJQGJZq+D0CcyEC/0RF/HA1uBTpU9qARwEKgfx3xNCjRw+cBEBcCmYYMkGUFNG9YjN64Q3MQP+quUTAKhhUQAAggokcqoQecj27MGQWjjUo8ANQQoXDaFDRi6UCHMMBlBz0alI7QEVpyGt8PQA1LYDjPp4NbQeZPGM0uNMkng2mDDkb5AHIfsR2eAQKOg8ANtF4eUkinDiS54MEQjGdQngOt6adZ/gMIIKIalcAGJahwHT3gfBSMAsIAdMh4IDHrKXE0mg4A9Q+k+2k9SpNIboMSLZwSoetRDWgcFqONyqGZzqjhvkHbqISu+Rzu4MII8Sfd4xm63Go+Aw3WNAMEEMFGJfSAc3ptzBnpPZML0DAYCmAob2KgZTyC8st9YKYFVUgHySwYFzDQYRQH1ChDbuBBG2m0tHcClUd/AhkgN/3QapragAojz6MAM90pMAz+00PwbmYbBaNgiDdWPwDTN2i5lQO1y0+AAGIh0KCEbcyhx9qiBTYM30f6qMAHYBgcGE3yQ75zwACtNAOglSiswwDCDxkg6yYf4KqwoGsrB6QipXEnpJGaBoLCDxi2hQy0PVvSgGF0FzC1QcIQcmfDaHSNgmHcsLzAQN3lVh8AAojQSCWosFagg/8OABtTozstRwG9wECMhiNP1dYjNTYPIDU2wQ3PARwZs6eh2RNp4S/QxihgOPbTsOPrMNqopDqIH0LuHG1UjoLhDB5Qu24FCCCcjcojDJygzESPKQpQRTMRev4lcgU8GHdeHqDxSKIAWjgMZgAaVb0wFHMRtIf2gGFwbBRwQO8pAt32gQF1ZJNejU1ark9cQEOzQVPqCaP1w+AHNNyg84EGdcZQ2LAzCkYBRWmc2o1KgABiwdGgBFVy9XTy1FA7+5KWjUpQpb5/CIWD4xDOTAcGcUNEAEdj8wG0Z3kQ2tB8QI1NL1CzFWjYkbtA47VpF4dwI6thCFUY1AC0GKV8QMP8PCg37ND4rF2cDXdqlTfE1ocDuWlxuG8Sgpb51E5HBwECiAVLg1KBYfSA81Ew/MFEhqE3uqUAxQ5IBQMDA2JUE9TYPEBmA46WDZCNNA6XDTRsENO6YqkfKRmOhht0FtKwUTlYN+wMxOADvQcSBvrmPsZhnhep3c4DdTo2AAQQtpFKem3MGQWjYCB7oaBbbA4w0OdMSJr36KE4AVpgPIA2tBaSMLJAy6nvCzSOS5B/G0ZT9aAHtOrELYBu2npAo85Rwmj6GgUD1PijRbqzp1G9BxqoYQAIIJRG5REGzvkMowecj4KRA0A7h88PQ3+BKlbQubIF0N19jUSsC6NlR3L0SJ5RAAK0mPregDSKCKrU+mnk7tFG5SgYCDBUZjJAZTz49B6AAGJCalAmMIwudh8FIwhAR/Eah7k3QZ3E9cDG5fqBunZwpB9gPApoukEHeWkFrdY+KkDdPwpGwSjADhJhG0kBAogJ2qAEVTzzR8NlFIzAhmUDw8g4MgZUKe4fvc96FAwQoMUoJWgN1wKkvPyAhg3L0fvAR8EowA5QLrUACCAmpAPOR8EoGKkAdDPLhRHgT4PRhuUooDeg4QadBVjEFtKqUwb1xygYBaMAtUGJcgsgQAAxQRuUo5llFIxYABq2B2JDBtqepTioGpajsT4K6AgSaGTuQix5GTRi8mGI+WMUjIKhBkB5LBC9QQkCAAEEalSOjlqMglHAAL8eMZBh+G8sMaDx+YijYBQgA1pMHV/Ac7LBgiHkj1EwCoYaAOUvRVybPwECCNSoTGQY3Z05CkYBrGEJyiiKDJANPMM5X9QDG5Z0OelhgA5qHgWDANBwg85EMuUoAaMbdkbBSAeg+hHvlbsAAcQEvWpv9N7tUTAKEA1L0HR4AxALQvPGcF1viXz8Ci0b0KOzISMX0Gp0bwOe/PuAhnl2dLRyFIxkAOpUnQd2rvbjGpQACCDw7m9gwxKUQRtHw2sUjAKMCmoBdL2lIrSBCcorD4aJ9xyQCgZaNpxHz74dgYCWG3TwjZRAAa1GK0c37IyCUQA5PB3UuExAlwAIIPjh58CGZcMRBk59GhUCo2AUDPXGJaghuQCKYRUmqLFkD6UdhqjX4qENSlo2lP0ZaHx4NC2n2EfP2SQbJNDIXGJ2eIM6f6CReFqMkuczQC5OGAWjYKSD+aCbrJDLSIAAQr+mETQSozA6sjAKRgFRjcwHDEjTcEgNTVhjU4Fh8J+sAOpEFkKvuaOVHQZ0uD+ZljvaGUdTPNkdFmqDB8Q08kEjmcA0t4FGDduE0UblKBgFiIYlA2QmDwwAAgilUWnD8P3DEQbORGgBPboOahSMAsobmgIMiJFMeaRG52ABoM0HAtDpxAMMtBtxBVXEDbQwmF4bjmiUZmjWYAWte2IYoBF0Gm7QWUiiWlo0KgVA037IB68Pp3QziIDj6CzBkAAKyPkBIIDQRypBDcsLwIYl6FiV+mHgWQMaN44vjIbFKCBQ+MMaawewNIQMoBWv/QDHjwHUfRdo2AjJB/p5AhFr4cgBtGw4PRhNxWQBWm1oWUBC3jsAmpqjUeM2nmFknGs7CkYBSfkBIIBYsMkCG5YYleBQBMDGMU176sBwKhwNi1FAZmPzAnqnBDp9rgCNp4FY33wQiAtoZLYA1OwGWjRYaRgmB0ZTK2mAhht0NpCxhAK0YaefFh0ZOizpGAWj9QQjlfIkrPzNZ6DN4AW8bQEQQCyj0TYKRsGgKUBAFdQDWEMGOppJjxuvHBiwjKbSovEHWueG59BqcgrLBBqHz8HRlEkySKCRuaCd1/8HkT9HN+yMgqFSt4BmiBqg64xpsrwRVF+BynaAABptVI6CEQWgN8nQa2lHIiXrrkAZFOjeQmjDki4FD7TQodUIKaggA+0WdKTGNDi00d1P42DZMJprSAYj5SzHhNFG5SgYYo1LWJ0yn0blOwNAABHVqDzCwLmeYWiux6PpAn5guPQzDJ2d8qM7+ukP6qEjc5Q0oOixbvcBEnsjA22n3cF3j1PasIROsc6ncbm0gEZrQIdzp41WG3QGIxjwDTujYBSQ0bBcAEy39bTKpwABROxIJWhdyv7R6MBaQTqMBsOQAvRsJIAyLajjQcmNVfRIXw/oVeAg5RvQwbmJ5OzuhJ5JSY+O7uiFEKSD+BHo39FG5SgYauABrcp4gAAiqlEJ2rhzhIGzkIH2U02jYBTQGhygs30J0EXSiaSOekEbTzTPc1gadqDG1HwaWwsq0PZDp9sbiVlnCZ3uBq1jS6BDvC0Y3YRBcmMfFKcj7fKM0Q07tAP7aXh2LtXqE2DcOw7BsKXZSR8AAUT0mkpgw3IC9MadhNG0PgqGKoCuKaFZLw0HCIBWPhOJaaxApxDj6VRBX8ASRvQYrUQOG9AGjAvQBv9FBtTpeFBDUh5aANJrCQeo8T+6Vo68uByJYHTDzigYauAjrQwGCCBSN+oUMgy+w5tHwSggFYAORab3OawCUDvroQ0oEH6IJM/PMDDLKRbiyevr6eiOwVSuJI6upSS7cTUSQcJoo3IUjAIIAAggJlIUg27cAVKBDPRdlzYKRgG1wYQBTsMG0IqoHgkXDECDEhQGC7BJABtVoGnpkbjzeQLU76OABABdqqEwQr0vAD3aahSMghEPAAKIiVQNwIblA2jDchSMgiEJoKNQE0dDgmEigRE50AajByMoPEA79UdHnMgD8aP+HwWjYBQABBATOZqgN+6MFr6jYCg3LBsYRvZtKRegYUCo8T1SZiYuMFC2S3/EAuhGtIQRHgwO0I1Ko2AUjGgAEEBM5GoEbdxhGD1KYRQMbRDIMLTub6cW+EBsAwq6K9txmDcswX4cXUdJNkgYDQIwyB8NglEw0gFAADFRqL9whFbKo2AYAGgjwnEEpuFEUq5KHOYNS9BufMPRBuVoY2q0cT0KRgHlACCAKGpUQjfuJDKMbtwZBaMNy6HUoNxARjiBwsdwmIUT6HzM0SlvCsAI36CDDkY37IyCEQ8AAojiu7+BDcsLRxg4QQXz+tHgHAVDuGFpCKwQQAeNFwxTb34gt0GJFE4PQNcrMiB2qw/lsAgk5zafUYABaLVBZQGtGvzANAw62D+BhuGxYDRZjIJBDg4wUP9YPVAH8wBAADFRwyRgwxJ8K8ZoPI2CId64BC3nADWaHgzDAsSQGkflgBrgQzycQBW+4miDkiqNM1pu0FlIQ6fT8uSH0Q07o2AoAFrMOIHOWmYACCAmapkGbFg2MIzMc+1GwfBqWIKu3VJkgKwXHuqNS5D7QSNyjtS+Rg4tnIbC8hdYw3r0YHPqAVo1KB/QstEPXcpBy07F6BrTUTDY67kPNGivgW/UAgggJiobmsgwunFnFAyPTDcB2mhKHIKdJZB7QY0nRVof5A0KJyAFCqfGQdoIB/nfEdqwHi2bhkbjaSEd3E5LOxJGk8YoGAKA2iP2CqA11gABRNVG5ejGnVEwDBuXoLVdoKOHBAd5AxPUYAKNGoIakqDRyQX07PWCzryENsIDB0EYPUALiwOjKZm6gMYbdBbQI1/TsBM0umFnFAyFuu0ADcrqeoAAYqG2Q6Ebd0AVi8MwjIcDWHq7B0domkQvkBvpZM9AZUDYlYYLoJUq7J5ueQbEvdUCdAz7B9C0B0qTFwbLlC7sekfoejvQdIg9NJwU6JA3N4JoGo1IPmAYeuvGaVE+HaBxnv9A7aUaeEAhA+3um38wwuqIkbqn4sEQLh9AADRQcpGaBgIEEONoe30UjALqAGhDCta4pGZlBWowXkDqXQ7FsFGANiyp2dkEhcmD0WntUTAKRsEoGBwAIMAAxRawBlCp+IAAAAAASUVORK5CYII=" alt="Cannot load image"
+  class="ssi-header-logo"></h1>
+  <div id="wrapper" style="text-align:center">
+    <h2>Weekend Night Shift</h2>
+    <table>
+      <tr>
+        <td><h4>Disabled</h4></td>
+        <td>
+          <!--Night Shift Weekends Toggle Switch.-->
+          <label class="switch">
+            <input type="checkbox" id="nightshift">
+            <span class="slider round"></span>
+          </label>
+          </td>
+        <td><h4>Enabled</h4></td>
+      </tr>
+    </table>
+  </div>
+  <ol>
+    <li><h4>Login to lighthouse first in a new tab.</h4></li>
+    <li><h4>Select the month you would like to export.</h4></li>  
+    <li><h4>After downloads complete select files to filter here:</br><input class="file" id="file" type="file" multiple="multiple"><div style="display: inline-block;"><input type="button" class="smbutton"
+              value="Filter" onclick="parsefiles()"></div></h4></li>  
+  </ol>
+        <!--Monthly Export buttons-->
+        <div id="container" style="text-align:center">
+          </br>
+          </br>
+          <div>
+              <input type="button" id="exportButton" class="button"
+              value="January" onclick="getDays(0)">
+              <input type="button" id="exportButton" class="button"
+              value="February" onclick="getDays(1)">
+              <input type="button" id="exportButton" class="button"
+              value="March" onclick="getDays(2)">
+              <input type="button" id="exportButton" class="button"
+              value="April" onclick="getDays(3)">
+          </div>
+          <div>
+              <input type="button" id="exportButton" class="button"
+              value="May" onclick="getDays(4)">
+              <input type="button" id="exportButton" class="button"
+              value="June" onclick="getDays(5)">
+              <input type="button" id="exportButton" class="button"
+              value="July" onclick="getDays(6)">
+              <input type="button" id="exportButton" class="button"
+              value="August" onclick="getDays(7)">
+          </div>
+          <div>
+              <input type="button" id="exportButton" class="button"
+              value="September" onclick="getDays(8)">
+              <input type="button" id="exportButton" class="button"
+              value="October" onclick="getDays(9)">
+              <input type="button" id="exportButton" class="button"
+              value="November" onclick="getDays(10)">
+              <input type="button" id="exportButton" class="button"
+              value="December" onclick="getDays(11)">
+          </div>
+        </div>
+
+    <div style="position: absolute; bottom: 1vw;">
+      <h3 id="downloads">Download Progress</h3>
+    </div>
+
+</body>
+</html>
