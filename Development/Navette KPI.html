@@ -247,8 +247,8 @@
         value for day of the week. (.getDay = 0-6), calls the function getURL with that value,
         concatenates everything and then pushes the final URL into an array of urls
         named "URL"*/
+
         urlDays.forEach(item => URL.push(getURL(item.getDay(), item)));
-        //console.log(URL);
         loopURLs(URL); //Send each download request to the server
     }
 
@@ -433,9 +433,10 @@
                                 break;
                             }
                         }
+                        // start at first date found an iterate from there.
+                        const start = d.getDate();
+                        d.setDate(i + start);
 
-                        // Months don't start at zero.
-                        d.setDate(i + 1);
                         let day = d.toLocaleString('default', {
                             weekday: 'short'
                         });
@@ -447,6 +448,7 @@
 
                         // Mo 08-01, Tu 08-02, etc....
                         book.worksheets[i].name = day + " " + d;
+
                     }
 
                 }
