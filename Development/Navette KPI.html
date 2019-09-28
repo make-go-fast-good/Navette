@@ -181,9 +181,15 @@
 
 <script>
     $(function() {
-        $("#startDate").datepicker({
+        var wk = $("#startDate").datepicker({
             showOtherMonths: true,
-            selectOtherMonths: true
+            selectOtherMonths: true,
+            onSelect: function(dateText, inst) {
+                //When we select the start date for custom export populate the filename field automatically with the week number.
+                var startDate = new Date(dateText);
+                var selectedYear = startDate.getFullYear();
+                $("#wbName").val(selectedYear + " Week " + $.datepicker.iso8601Week(startDate));
+            }
         });
     });
     $(function() {
@@ -336,8 +342,10 @@
             /*
             //Progress bar things.
             var elem = document.getElementById("myBar");
-            elem.style.width = (((index + 1) / (_download.length + 1)) * 100) + "%";
+            let p = (((index + 1) / (_download.length + 1)) * 100);
+            progress(p);
             */
+
             document.body.removeChild(hidden);
         }
         document.getElementById("downloads").innerHTML = "Exported " + _download.length.toString() +
@@ -476,10 +484,16 @@
 
         book.xlsx.writeBuffer()
             .then(function(buffer) {
+                //Check to see if there is a filename already present. If not generate one. 
+                if ($("#wbName").val()) {
+                    var filename = $("#wbName").val() + '.xlsx';
+                } else {
+                    var filename = d + m + ' Navette KPI.xlsx'
+                }
                 var blob = new Blob([buffer], {
                     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 })
-                saveAs(blob, d + m + ' Navette KPI.xlsx');
+                saveAs(blob, filename);
             });
     }
 
@@ -640,6 +654,9 @@
             <div class="w3-col s3 w3-center">
                 </br>
                 </br>
+                <h5>Workbook filename:</h5>
+                <input type="text" name="filename" value="" id="wbName" style="width: auto;">
+                </br>
                 </br>
                 </br>
                 </br>
@@ -655,6 +672,7 @@
         </div>
 
         <div style="position: absolute; bottom: 1vw; width: 100%">
+            <div id="progressbar"></div>
             <!--<div id="myBar" class="w3-container w3-blue" style="height:24px; width:0%">-->
             <h5 id="downloads"></h5>
         </div>
