@@ -1,0 +1,6 @@
+#Notification Export: 2019-09-11 07:39:14
+Severity;Type;StartTime;EndTime;Duration;MechanicalName;NodeName;Text;ID;Documentation
+ERROR;SCADA;2019-06-14 14:40:20;2019-06-14 15:25:19;0.00:44:59;N3211;N3211;"LHD1: Middle-LB right is not occupied (X:14809, Y:1, S:2)";21712036;
+ERROR;SCADA;2019-06-14 15:23:00;2019-06-14 15:25:19;0.00:02:19;N3211;N3211;"Safety door open (X:14809, Y:1, S:2)";21713137;
+ERROR;SCADA;2019-06-14 16:30:51;2019-06-14 16:49:47;0.00:18:55;N3111;N3111;"LHD1: Middle-LB right is not occupied (X:89695, Y:1, S:2)";21715032;
+ERROR;SCADA;2019-06-14 16:39:36;2019-06-14 16:49:47;0.00:10:10;N3111;N3111;"Safety door open (X:89695, Y:1, S:2)";21715341;
